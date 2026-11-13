@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora de Data</title>
+<meta name="description" content="Conte dias, semanas, meses, horas e minutos entre datas, calcule idades com fase da lua, signo e contagem para o próximo aniversário, e brinque com as datas.">
+<meta name="theme-color" content="#f5f3fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1020" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Calc. de Data">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%236a5bf0'/%3E%3Crect x='7' y='8' width='18' height='17' rx='3' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M7 13h18M11 6v4M21 6v4' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='21' cy='19' r='4' fill='%23ffd56b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Calculadora de datas bem visual: blocos grandes que contam ao vivo, lua desenhada,
+   anéis de progresso e cartões coloridos. Claro e escuro. */
+:root {
+  --bg: #f4f2fb; --panel: #ffffff; --panel-2: #f1eefb; --fg: #1a1830; --muted: #6a6880; --line: #e6e2f4;
+  --accent: #6a5bf0; --accent-2: #00b3a6; --accent-soft: #ece9fe;
+  --c-dia: #6a5bf0; --c-sem: #e8578a; --c-mes: #f29d38; --c-hora: #00b3a6; --c-min: #4f9df5; --c-seg: #9b6cf0;
+  --moon: #ffd56b; --moon-dark: #2a2740;
+  --radius: 18px;
+  --display: "Fraunces", Georgia, serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1020; --panel: #181830; --panel-2: #1f1f3a; --fg: #ecebf7; --muted: #9a98b8; --line: #2a2a46;
+    --accent: #8f82ff; --accent-2: #2dd4c4; --accent-soft: #241f45;
+    --c-dia: #8f82ff; --c-sem: #ff79a8; --c-mes: #ffb257; --c-hora: #2dd4c4; --c-min: #74b4ff; --c-seg: #b99bff;
+    --moon: #ffdd7e; --moon-dark: #0b0b18; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1020; --panel: #181830; --panel-2: #1f1f3a; --fg: #ecebf7; --muted: #9a98b8; --line: #2a2a46;
+  --accent: #8f82ff; --accent-2: #2dd4c4; --accent-soft: #241f45;
+  --c-dia: #8f82ff; --c-sem: #ff79a8; --c-mes: #ffb257; --c-hora: #2dd4c4; --c-min: #74b4ff; --c-seg: #b99bff;
+  --moon: #ffdd7e; --moon-dark: #0b0b18; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 720px; margin-inline: auto; padding: 16px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; font-weight: 600; line-height: 1.1; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+/* Cabeçalho */
+header.top { text-align: center; padding: 8px 0 6px; position: relative; }
+header.top h1 { font-size: clamp(1.9rem, 7vw, 2.6rem); font-weight: 700; letter-spacing: -.01em; }
+header.top h1 .em { font-style: italic; color: var(--accent); }
+header.top p { color: var(--muted); margin: 6px 0 0; font-size: .92rem; }
+.theme-btn { position: absolute; right: 0; top: 6px; width: 38px; height: 38px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel); font-size: 1.05rem; }
+
+/* Abas */
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding: 14px 2px 4px; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: .55rem .95rem; font-weight: 600; font-size: .9rem; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.tab .ic { font-size: 1.05rem; }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.panel { display: none; padding-top: 14px; }
+.panel.on { display: block; animation: fade .25s ease; }
+@keyframes fade { from { opacity: 0; translate: 0 6px; } }
+
+/* Campos */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.inputs { display: grid; gap: 12px; }
+@media (min-width: 520px) { .inputs.two { grid-template-columns: 1fr 1fr; } }
+input[type="date"], input[type="time"], input[type="datetime-local"], input[type="number"], select {
+  width: 100%; background: var(--panel-2); border: 1.5px solid var(--line); border-radius: 12px; padding: .7rem .8rem; color: var(--fg);
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chipbtn { border: 1.5px solid var(--line); background: var(--panel); border-radius: 999px; padding: .45rem .8rem; font-weight: 600; font-size: .85rem; }
+.chipbtn:hover { border-color: var(--accent); }
+.seg { display: inline-flex; background: var(--panel-2); border-radius: 999px; padding: 3px; gap: 3px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; color: var(--muted); font-weight: 600; font-size: .85rem; padding: .4rem .8rem; border-radius: 999px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+/* Blocos grandes (stat tiles) */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 460px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+.stat { border-radius: 16px; padding: 14px; color: #fff; position: relative; overflow: hidden; min-height: 92px; display: flex; flex-direction: column; justify-content: space-between; }
+.stat .big { font-family: var(--mono); font-weight: 700; font-size: clamp(1rem, 5vw, 1.7rem); line-height: 1.05; letter-spacing: -.02em; max-width: 100%; }
+.stat .big { white-space: nowrap; }
+.stat .lbl { font-size: .78rem; font-weight: 600; opacity: .92; display: flex; align-items: center; gap: 6px; }
+.stat .lbl .ic { font-size: 1rem; opacity: .85; }
+.stat.dia { background: linear-gradient(135deg, var(--c-dia), color-mix(in srgb, var(--c-dia) 70%, #000)); }
+.stat.sem { background: linear-gradient(135deg, var(--c-sem), color-mix(in srgb, var(--c-sem) 70%, #000)); }
+.stat.mes { background: linear-gradient(135deg, var(--c-mes), color-mix(in srgb, var(--c-mes) 70%, #000)); }
+.stat.hora { background: linear-gradient(135deg, var(--c-hora), color-mix(in srgb, var(--c-hora) 70%, #000)); }
+.stat.min { background: linear-gradient(135deg, var(--c-min), color-mix(in srgb, var(--c-min) 70%, #000)); }
+.stat.seg { background: linear-gradient(135deg, var(--c-seg), color-mix(in srgb, var(--c-seg) 70%, #000)); }
+
+.headline { text-align: center; margin: 4px 0 16px; }
+.headline .num { font-family: var(--display); font-weight: 700; font-size: clamp(2.4rem, 12vw, 4rem); line-height: 1; color: var(--accent); }
+.headline .cap { color: var(--muted); font-size: .95rem; margin-top: 4px; }
+.breakdown { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.bd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: .45rem .7rem; font-size: .85rem; }
+.bd b { font-family: var(--mono); color: var(--fg); }
+
+.section-title { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 2px 0 8px; }
+
+/* Lua desenhada */
+.moon-wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.moon { --illum: .5; --waxing: 1; width: 108px; height: 108px; border-radius: 50%; flex: none; position: relative; background: var(--moon);
+  box-shadow: 0 0 34px -6px var(--moon), inset -6px -6px 16px rgba(0,0,0,.25); overflow: hidden; }
+.moon::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, rgba(255,255,255,.5), transparent 45%), var(--moon); }
+.moon .shadow { position: absolute; inset: 0; border-radius: 50%; background: var(--moon-dark); }
+.moon-info h3 { font-size: 1.3rem; }
+.moon-info .pct { font-family: var(--mono); color: var(--accent); font-weight: 700; }
+.moon-emoji { font-size: 1.6rem; }
+
+/* Anel de progresso */
+.ring-wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ring { width: 120px; height: 120px; flex: none; position: relative; }
+.ring svg { width: 100%; height: 100%; rotate: -90deg; }
+.ring .trk { fill: none; stroke: var(--line); stroke-width: 10; }
+.ring .bar { fill: none; stroke: var(--accent); stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+.ring .mid { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.ring .mid .n { font-family: var(--display); font-weight: 700; font-size: 1.5rem; }
+.ring .mid .u { font-size: .66rem; color: var(--muted); }
+
+/* Badges / cartões coloridos */
+.tiles2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; gap: 10px; align-items: center; }
+.tile .emo { font-size: 1.8rem; flex: none; }
+.tile .k { font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.tile .v { font-weight: 700; font-size: 1rem; }
+.countdown { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; text-align: center; }
+.cu { background: var(--accent-soft); border-radius: 12px; padding: 10px 4px; }
+.cu .n { font-family: var(--mono); font-weight: 700; font-size: clamp(1.2rem,5vw,1.7rem); color: var(--accent); }
+.cu .u { font-size: .68rem; color: var(--muted); font-weight: 600; }
+
+/* Marcos */
+.milestone { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.milestone:last-child { border-bottom: 0; }
+.milestone .mi { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); display: grid; place-items: center; font-size: 1.1rem; flex: none; }
+.milestone .mt { flex: 1; min-width: 0; }
+.milestone .mt .d { font-size: .8rem; color: var(--muted); }
+.mbar { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: 4px; }
+.mbar > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.milestone .done { color: var(--accent-2); font-weight: 700; font-size: .8rem; white-space: nowrap; }
+
+.big-answer { text-align: center; padding: 10px 0; }
+.big-answer .wd { font-family: var(--display); font-weight: 700; font-size: clamp(1.8rem,8vw,2.6rem); color: var(--accent); }
+.big-answer .sub { color: var(--muted); margin-top: 4px; }
+
+.hint-empty { text-align: center; color: var(--muted); padding: 22px 10px; }
+.app-links { font-size: 12px; text-align: center; opacity: .6; margin: 20px 0 6px; }
+.app-links a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.app-links a:hover { opacity: 1; }
+footer.ft { text-align: center; color: var(--muted); font-size: .78rem; padding-bottom: 10px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <button class="theme-btn" id="theme" aria-label="Tema">◐</button>
+    <h1>Calculadora de <span class="em">Data</span></h1>
+    <p>Conte o tempo entre datas, descubra idades e brinque com o calendário.</p>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="entre" aria-selected="true"><span class="ic">📅</span> Entre datas</button>
+    <button class="tab" role="tab" data-tab="idade" aria-selected="false"><span class="ic">🎂</span> Idade</button>
+    <button class="tab" role="tab" data-tab="somar" aria-selected="false"><span class="ic">➕</span> Somar/Subtrair</button>
+    <button class="tab" role="tab" data-tab="lua" aria-selected="false"><span class="ic">🌙</span> Fase da lua</button>
+    <button class="tab" role="tab" data-tab="mais" aria-selected="false"><span class="ic">✨</span> Curiosidades</button>
+  </nav>
+
+  <!-- ENTRE DATAS -->
+  <section class="panel on" id="p-entre" role="tabpanel">
+    <div class="card">
+      <div class="inputs two">
+        <div class="field"><label for="e-ini">Data inicial</label><input type="datetime-local" id="e-ini"></div>
+        <div class="field"><label for="e-fim">Data final</label><input type="datetime-local" id="e-fim"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="chipbtn" id="e-hoje">Final = agora</button>
+        <button class="chipbtn" id="e-swap">⇅ Inverter</button>
+      </div>
+    </div>
+    <div id="e-out"></div>
+  </section>
+
+  <!-- IDADE -->
+  <section class="panel" id="p-idade" role="tabpanel">
+    <div class="card">
+      <div class="inputs two">
+        <div class="field"><label for="i-nasc">Data de nascimento</label><input type="date" id="i-nasc"></div>
+        <div class="field"><label for="i-hora">Hora (opcional)</label><input type="time" id="i-hora"></div>
+      </div>
+    </div>
+    <div id="i-out"><p class="hint-empty">Escolha a data de nascimento para ver a idade, a fase da lua, o signo e a contagem para o próximo aniversário. 🎈</p></div>
+  </section>
+
+  <!-- SOMAR -->
+  <section class="panel" id="p-somar" role="tabpanel">
+    <div class="card">
+      <div class="field"><label for="s-base">Data base</label><input type="date" id="s-base"></div>
+      <div class="row" style="margin-top:12px">
+        <div class="seg" id="s-op"><button aria-pressed="true" data-op="1">➕ Somar</button><button aria-pressed="false" data-op="-1">➖ Subtrair</button></div>
+      </div>
+      <div class="inputs" style="grid-template-columns:repeat(4,1fr);margin-top:12px">
+        <div class="field"><label>Dias</label><input type="number" id="s-d" value="0" min="0"></div>
+        <div class="field"><label>Semanas</label><input type="number" id="s-w" value="0" min="0"></div>
+        <div class="field"><label>Meses</label><input type="number" id="s-m" value="0" min="0"></div>
+        <div class="field"><label>Anos</label><input type="number" id="s-y" value="0" min="0"></div>
+      </div>
+    </div>
+    <div id="s-out"></div>
+  </section>
+
+  <!-- LUA -->
+  <section class="panel" id="p-lua" role="tabpanel">
+    <div class="card">
+      <div class="field"><label for="l-data">Data</label><input type="date" id="l-data"></div>
+      <div class="row" style="margin-top:10px"><button class="chipbtn" id="l-hoje">Hoje</button></div>
+    </div>
+    <div id="l-out"></div>
+  </section>
+
+  <!-- CURIOSIDADES -->
+  <section class="panel" id="p-mais" role="tabpanel">
+    <div class="card">
+      <div class="field"><label for="m-data">Uma data qualquer</label><input type="date" id="m-data"></div>
+    </div>
+    <div id="m-out"></div>
+  </section>
+
+  <p class="app-links" data-app-links></p>
+  <footer class="ft">Tudo calculado no seu aparelho. Nada é enviado para lugar nenhum.</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const el = (t,p,...k)=>{const e=document.createElement(t);if(p)for(const n in p){const v=p[n];if(v==null)continue;if(n==="class")e.className=v;else if(n==="html")e.innerHTML=v;else if(n==="text")e.textContent=v;else e.setAttribute(n,v);}for(const c of k){if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(c));}return e;};
+const fmtN = n => n.toLocaleString("pt-BR");
+const DIAS = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const pad = n => String(n).padStart(2,"0");
+
+/* ---------- Matemática de datas ---------- */
+function diffParts(a, b) { // a <= b, retorna {anos,meses,dias,horas,min,seg}
+  let y=b.getFullYear()-a.getFullYear(), m=b.getMonth()-a.getMonth(), d=b.getDate()-a.getDate();
+  let hh=b.getHours()-a.getHours(), mm=b.getMinutes()-a.getMinutes(), ss=b.getSeconds()-a.getSeconds();
+  if(ss<0){ss+=60;mm--;} if(mm<0){mm+=60;hh--;} if(hh<0){hh+=24;d--;}
+  if(d<0){ const pm=new Date(b.getFullYear(),b.getMonth(),0).getDate(); d+=pm; m--; }
+  if(m<0){ m+=12; y--; }
+  return {anos:y,meses:m,dias:d,horas:hh,min:mm,seg:ss};
+}
+function totals(a, b) { // diferença absoluta
+  const ms=Math.abs(b-a), s=Math.floor(ms/1000);
+  return { ms, seg:s, min:Math.floor(s/60), horas:Math.floor(s/3600), dias:Math.floor(s/86400), semanas:Math.floor(s/604800) };
+}
+function monthsBetween(a,b){ // meses inteiros
+  let m=(b.getFullYear()-a.getFullYear())*12 + (b.getMonth()-a.getMonth());
+  if(b.getDate()<a.getDate()) m--; return Math.max(0,m);
+}
+function addToDate(base, {d=0,w=0,m=0,y=0}, sign=1){
+  const r=new Date(base.getTime());
+  r.setFullYear(r.getFullYear()+sign*y);
+  r.setMonth(r.getMonth()+sign*m);
+  r.setDate(r.getDate()+sign*(d+w*7));
+  return r;
+}
+/* Fase da lua: referência lua nova 2000-01-06 18:14 UTC */
+const SYN = 29.53058867;
+function moon(date){
+  const ref = Date.UTC(2000,0,6,18,14,0)/86400000;
+  let age = (date.getTime()/86400000 - ref) % SYN; if(age<0) age+=SYN;
+  const frac = age/SYN;
+  const illum = (1-Math.cos(2*Math.PI*frac))/2;
+  const names=["Lua nova","Crescente côncava","Quarto crescente","Crescente gibosa","Lua cheia","Minguante gibosa","Quarto minguante","Minguante côncava"];
+  const emo=["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"];
+  const idx = Math.round(frac*8)%8;
+  const waxing = frac < 0.5;
+  const toNew = SYN-age, toFull = ((0.5*SYN - age)%SYN + SYN)%SYN;
+  return { age, frac, illum, nome:names[idx], emoji:emo[idx], waxing, toNew, toFull };
+}
+const SIGNOS=[["Capricórnio","♑",1,19],["Aquário","♒",2,18],["Peixes","♓",3,20],["Áries","♈",4,19],["Touro","♉",5,20],["Gêmeos","♊",6,20],["Câncer","♋",7,22],["Leão","♌",8,22],["Virgem","♍",9,22],["Libra","♎",10,22],["Escorpião","♏",11,21],["Sagitário","♐",12,21],["Capricórnio","♑",12,31]];
+function signo(date){ const m=date.getMonth()+1,d=date.getDate(); for(const [n,e,mm,dd] of SIGNOS){ if(m<mm||(m===mm&&d<=dd)) return {nome:n,emoji:e}; } return {nome:"Capricórnio",emoji:"♑"}; }
+const CHINES=["Macaco","Galo","Cão","Porco","Rato","Boi","Tigre","Coelho","Dragão","Serpente","Cavalo","Cabra"];
+const CHINES_EMO=["🐵","🐔","🐶","🐷","🐭","🐮","🐯","🐰","🐲","🐍","🐴","🐐"];
+function chines(y){ const i=((y%12)+12)%12; return {nome:CHINES[i],emoji:CHINES_EMO[i]}; }
+
+/* ---------- Componentes visuais ---------- */
+function statGrid(t){
+  const defs=[["dia","Dias","📅",t.dias],["sem","Semanas","🗓️",t.semanas],["mes","Meses","📆",t.meses],["hora","Horas","⏰",t.horas],["min","Minutos","⏱️",t.min],["seg","Segundos","⚡",t.seg]];
+  return el("div",{class:"stat-grid"}, ...defs.map(([c,l,ic,v])=>
+    el("div",{class:"stat "+c}, el("span",{class:"big"},fmtN(v)), el("span",{class:"lbl"}, el("span",{class:"ic"},ic), l))));
+}
+function moonCard(d){
+  const mn=moon(d);
+  const m=el("div",{class:"moon"}); const sh=el("div",{class:"shadow"});
+  m.append(sh);
+  // sombra: largura proporcional à parte escura; lado depende de crescente/minguante
+  const dark=1-mn.illum;
+  sh.style.width=(dark*100)+"%";
+  sh.style[mn.waxing?"left":"right"]="0"; sh.style.borderRadius= dark>0.5 ? "50%" : (mn.waxing?"0 50% 50% 0":"50% 0 0 50%");
+  sh.style.borderRadius="0"; // simplifica: meia sombra reta (visual de fase)
+  const info=el("div",{class:"moon-info"},
+    el("div",{class:"moon-emoji"},mn.emoji),
+    el("h3",{},mn.nome),
+    el("p",{class:"muted",style:"margin:4px 0 0"},"Iluminação: ",el("span",{class:"pct"},Math.round(mn.illum*100)+"%")));
+  return {node: el("div",{class:"moon-wrap"}, m, info), mn};
+}
+function ring(pct, nTxt, uTxt){
+  const R=52, C=2*Math.PI*R;
+  const w=el("div",{class:"ring"});
+  w.innerHTML=`<svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="${R}"/><circle class="bar" cx="60" cy="60" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}"/></svg>`;
+  w.append(el("div",{class:"mid"}, el("div",{class:"n"},nTxt), el("div",{class:"u"},uTxt)));
+  return w;
+}
+function countdown(parts){
+  return el("div",{class:"countdown"}, ...parts.map(([n,u])=>el("div",{class:"cu"}, el("div",{class:"n"},fmtN(n)), el("div",{class:"u"},u))));
+}
+
+/* ---------- ENTRE DATAS ---------- */
+function toLocalInput(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function renderEntre(){
+  const vi=$("#e-ini").value, vf=$("#e-fim").value, out=$("#e-out");
+  if(!vi||!vf){ out.innerHTML=`<p class="hint-empty">Escolha as duas datas para contar o tempo entre elas. ⏳</p>`; return; }
+  let a=new Date(vi), b=new Date(vf); const neg=b<a; if(neg){ const t=a;a=b;b=t; }
+  const t=totals(a,b), p=diffParts(a,b); t.meses=monthsBetween(a,b);
+  out.innerHTML="";
+  const head=el("div",{class:"headline"});
+  head.append(el("div",{class:"num"},fmtN(t.dias)), el("div",{class:"cap"}, (t.dias===1?"dia":"dias")+" no total"+(neg?" (a final é anterior)":"")));
+  const bd=el("div",{class:"breakdown"});
+  [["anos",p.anos],["meses",p.meses],["dias",p.dias],["h",p.horas],["min",p.min]].forEach(([u,v])=> bd.append(el("span",{class:"bd",html:`<b>${v}</b> ${u}`})));
+  head.append(bd);
+  out.append(el("div",{class:"card"}, head, statGrid(t)));
+  const extra=el("div",{class:"card"});
+  extra.append(el("div",{class:"section-title"},"Também dá para dizer"));
+  const diasUteis=businessDays(a,b);
+  extra.append(el("div",{class:"tiles2"},
+    tile("🗓️","Fins de semana", fmtN(Math.floor(t.dias)-diasUteis)+" dias"),
+    tile("💼","Dias úteis (seg–sex)", fmtN(diasUteis)+" dias"),
+    tile("📌","Começa numa", DIAS[a.getDay()]),
+    tile("🏁","Termina numa", DIAS[b.getDay()])));
+  out.append(extra);
+}
+function businessDays(a,b){ let n=0; const d=new Date(a.getFullYear(),a.getMonth(),a.getDate()); const end=new Date(b.getFullYear(),b.getMonth(),b.getDate()); while(d<end){ const w=d.getDay(); if(w!==0&&w!==6)n++; d.setDate(d.getDate()+1);} return n; }
+function tile(emo,k,v){ return el("div",{class:"tile"}, el("span",{class:"emo"},emo), el("div",{}, el("div",{class:"k"},k), el("div",{class:"v"},v))); }
+
+/* ---------- IDADE ---------- */
+function renderIdade(){
+  const vn=$("#i-nasc").value, out=$("#i-out");
+  if(!vn){ out.innerHTML=`<p class="hint-empty">Escolha a data de nascimento para ver a idade, a fase da lua, o signo e a contagem para o próximo aniversário. 🎈</p>`; return; }
+  const vh=$("#i-hora").value||"00:00";
+  const nasc=new Date(vn+"T"+vh), now=new Date();
+  if(nasc>now){ out.innerHTML=`<p class="hint-empty">Essa data ainda não chegou. 🙂</p>`; return; }
+  const p=diffParts(nasc,now), t=totals(nasc,now); t.meses=p.anos*12+p.meses;
+  out.innerHTML="";
+  // destaque idade
+  const head=el("div",{class:"headline"});
+  head.append(el("div",{class:"num"},fmtN(p.anos)), el("div",{class:"cap"},(p.anos===1?"ano":"anos")+", "+p.meses+" "+(p.meses===1?"mês":"meses")+" e "+p.dias+" "+(p.dias===1?"dia":"dias")));
+  out.append(el("div",{class:"card"}, head, statGrid(t)));
+  // próximo aniversário
+  let next=new Date(now.getFullYear(), nasc.getMonth(), nasc.getDate(), nasc.getHours(), nasc.getMinutes());
+  if(next<now) next.setFullYear(next.getFullYear()+1);
+  const tn=totals(now,next); const yearMs=next-new Date(next.getFullYear()-1,next.getMonth(),next.getDate(),next.getHours(),next.getMinutes());
+  const prog=1-((next-now)/yearMs);
+  const faltaH=tn.horas-tn.dias*24, faltaM=tn.min-tn.horas*60, faltaS=tn.seg-tn.min*60;
+  const annC=el("div",{class:"card"});
+  annC.append(el("div",{class:"section-title"},"Próximo aniversário"));
+  const rw=el("div",{class:"ring-wrap"});
+  rw.append(ring(Math.max(0,Math.min(1,prog)), tn.dias, tn.dias===1?"dia":"dias"));
+  rw.append(el("div",{style:"flex:1;min-width:200px"},
+    el("p",{style:"margin:0 0 8px"},"Você faz ",el("b",{},String(p.anos+1))," em ",el("b",{},`${nasc.getDate()} de ${MESES[nasc.getMonth()]}`),", numa ",el("b",{},DIAS[next.getDay()]),"."),
+    countdown([[tn.dias,"dias"],[faltaH,"horas"],[faltaM,"min"],[faltaS,"seg"]])));
+  annC.append(rw);
+  out.append(annC);
+  // nascimento: dia da semana, signo, chinês, lua
+  const mc=moonCard(nasc);
+  const nc=el("div",{class:"card"});
+  nc.append(el("div",{class:"section-title"},"No dia em que você nasceu"));
+  const sg=signo(nasc), ch=chines(nasc.getFullYear());
+  nc.append(el("div",{class:"tiles2",style:"margin-bottom:12px"},
+    tile("📆","Dia da semana", DIAS[nasc.getDay()]),
+    tile(sg.emoji,"Signo", sg.nome),
+    tile(ch.emoji,"Signo chinês", ch.nome),
+    tile("⭐","Nasceu em", `${nasc.getDate()}/${pad(nasc.getMonth()+1)}/${nasc.getFullYear()}`)));
+  nc.append(el("div",{class:"section-title"},"A lua naquela noite"));
+  nc.append(mc.node);
+  out.append(nc);
+  // marcos
+  out.append(milestones(nasc, now));
+}
+function milestones(nasc, now){
+  const livedDays=totals(nasc,now).dias;
+  const marcos=[[1000,"🌱","Mil dias"],[5000,"🎈","5 mil dias"],[10000,"🎉","10 mil dias"],[15000,"🌟","15 mil dias"],[20000,"💫","20 mil dias"],[25000,"🏆","25 mil dias"]];
+  const c=el("div",{class:"card"});
+  c.append(el("div",{class:"section-title"},"Marcos de dias de vida"));
+  marcos.forEach(([n,emo,lbl])=>{
+    const done=livedDays>=n;
+    const date=addToDate(nasc,{d:n}); const prog=Math.min(1,livedDays/n);
+    const row=el("div",{class:"milestone"}, el("span",{class:"mi"},emo),
+      el("div",{class:"mt"}, el("div",{},lbl), el("div",{class:"d"}, done? `alcançado em ${date.getDate()}/${pad(date.getMonth()+1)}/${date.getFullYear()}` : `faltam ${fmtN(n-livedDays)} dias (${date.getDate()}/${pad(date.getMonth()+1)}/${date.getFullYear()})`),
+        el("div",{class:"mbar"}, el("i",{style:`width:${prog*100}%`}))),
+      done? el("span",{class:"done"},"✓") : null);
+    c.append(row);
+  });
+  return c;
+}
+
+/* ---------- SOMAR ---------- */
+let sOp=1;
+function renderSomar(){
+  const vb=$("#s-base").value, out=$("#s-out");
+  if(!vb){ out.innerHTML=`<p class="hint-empty">Escolha a data base e quanto somar ou subtrair. 🧮</p>`; return; }
+  const base=new Date(vb+"T12:00");
+  const d=+$("#s-d").value||0,w=+$("#s-w").value||0,m=+$("#s-m").value||0,y=+$("#s-y").value||0;
+  const r=addToDate(base,{d,w,m,y},sOp);
+  out.innerHTML="";
+  const c=el("div",{class:"card big-answer"});
+  c.append(el("div",{class:"wd"}, `${r.getDate()} de ${MESES[r.getMonth()]} de ${r.getFullYear()}`),
+    el("div",{class:"sub"}, "cai numa "+DIAS[r.getDay()]));
+  c.append(el("div",{class:"breakdown",style:"margin-top:12px"},
+    el("span",{class:"bd",html:`<b>${pad(r.getDate())}/${pad(r.getMonth()+1)}/${r.getFullYear()}</b>`}),
+    el("span",{class:"bd"}, DIAS[r.getDay()]),
+    el("span",{class:"bd",html:`${sOp>0?"+":"−"} ${y}a ${m}m ${w}sem ${d}d`})));
+  out.append(c);
+}
+
+/* ---------- LUA ---------- */
+function renderLua(){
+  const v=$("#l-data").value, out=$("#l-out");
+  if(!v){ out.innerHTML=`<p class="hint-empty">Escolha uma data para ver a fase da lua. 🌗</p>`; return; }
+  const d=new Date(v+"T21:00"); const mc=moonCard(d); const mn=mc.mn;
+  out.innerHTML="";
+  const c=el("div",{class:"card"});
+  c.append(el("div",{class:"section-title"},`Lua em ${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`));
+  c.append(mc.node);
+  c.append(el("div",{class:"tiles2",style:"margin-top:14px"},
+    tile("🌑","Próxima lua nova", `em ${Math.round(mn.toNew)} dias`),
+    tile("🌕","Próxima lua cheia", `em ${Math.round(mn.toFull)} dias`),
+    tile("🔆","Iluminação", Math.round(mn.illum*100)+"%"),
+    tile(mn.waxing?"🌔":"🌖","Momento", mn.waxing?"Crescendo":"Minguando")));
+  out.append(c);
+}
+
+/* ---------- CURIOSIDADES ---------- */
+function renderMais(){
+  const v=$("#m-data").value, out=$("#m-out");
+  if(!v){ out.innerHTML=`<p class="hint-empty">Escolha uma data para descobrir curiosidades sobre ela. 🔮</p>`; return; }
+  const d=new Date(v+"T12:00"), now=new Date();
+  const t=totals(d,now); const futuro=d>now;
+  out.innerHTML="";
+  const c=el("div",{class:"card big-answer"});
+  c.append(el("div",{class:"wd"}, DIAS[d.getDay()]), el("div",{class:"sub"}, `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`));
+  out.append(c);
+  // dia do ano, semana, etc.
+  const startY=new Date(d.getFullYear(),0,0); const dayOfYear=Math.floor((d-startY)/86400000);
+  const bissexto=(d.getFullYear()%4===0&&d.getFullYear()%100!==0)||d.getFullYear()%400===0;
+  const sg=signo(d), ch=chines(d.getFullYear()), mn=moon(d);
+  const c2=el("div",{class:"card"});
+  c2.append(el("div",{class:"section-title"}, futuro?"Contagem e fatos":"Contagem e fatos"));
+  c2.append(el("div",{class:"tiles2"},
+    tile(futuro?"⏳":"⌛", futuro?"Faltam":"Já se passaram", fmtN(t.dias)+" dias"),
+    tile("🗓️","Dia do ano", `${dayOfYear}º de ${bissexto?366:365}`),
+    tile(mn.emoji,"Fase da lua", mn.nome),
+    tile(sg.emoji,"Signo", sg.nome),
+    tile(ch.emoji,"Signo chinês", ch.nome),
+    tile("🧮","Em semanas", fmtN(t.semanas)+" sem")));
+  out.append(c2);
+}
+
+/* ---------- Navegação de abas ---------- */
+const renderers={entre:renderEntre,idade:renderIdade,somar:renderSomar,lua:renderLua,mais:renderMais};
+let active="entre";
+function selectTab(name){
+  active=name;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected", t.dataset.tab===name));
+  ["entre","idade","somar","lua","mais"].forEach(n=>$("#p-"+n).classList.toggle("on", n===name));
+  renderers[name]();
+  try{ localStorage.setItem("cdd-aba", name); }catch(e){}
+}
+$("#tabs").addEventListener("click", e=>{ const t=e.target.closest(".tab"); if(t) selectTab(t.dataset.tab); });
+
+/* ---------- Entradas ---------- */
+["e-ini","e-fim"].forEach(id=>$("#"+id).addEventListener("input", ()=>{ saveVals(); renderEntre(); }));
+$("#e-hoje").addEventListener("click", ()=>{ $("#e-fim").value=toLocalInput(new Date()); saveVals(); renderEntre(); });
+$("#e-swap").addEventListener("click", ()=>{ const a=$("#e-ini").value; $("#e-ini").value=$("#e-fim").value; $("#e-fim").value=a; saveVals(); renderEntre(); });
+["i-nasc","i-hora"].forEach(id=>$("#"+id).addEventListener("input", ()=>{ saveVals(); renderIdade(); }));
+["s-base","s-d","s-w","s-m","s-y"].forEach(id=>$("#"+id).addEventListener("input", ()=>{ saveVals(); renderSomar(); }));
+$("#s-op").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b)return; sOp=+b.dataset.op; $("#s-op").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b)); renderSomar(); });
+$("#l-data").addEventListener("input", ()=>{ saveVals(); renderLua(); });
+$("#l-hoje").addEventListener("click", ()=>{ $("#l-data").value=toDateInput(new Date()); saveVals(); renderLua(); });
+$("#m-data").addEventListener("input", ()=>{ saveVals(); renderMais(); });
+function toDateInput(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+/* ---------- Cache (últimos valores) ---------- */
+function saveVals(){ try{ localStorage.setItem("cdd-vals", JSON.stringify({
+  ei:$("#e-ini").value, ef:$("#e-fim").value, inasc:$("#i-nasc").value, ihora:$("#i-hora").value,
+  sbase:$("#s-base").value, sd:$("#s-d").value, sw:$("#s-w").value, sm:$("#s-m").value, sy:$("#s-y").value,
+  ldata:$("#l-data").value, mdata:$("#m-data").value })); }catch(e){} }
+function loadVals(){ try{ const v=JSON.parse(localStorage.getItem("cdd-vals")||"null"); if(!v)return false;
+  $("#e-ini").value=v.ei||""; $("#e-fim").value=v.ef||""; $("#i-nasc").value=v.inasc||""; $("#i-hora").value=v.ihora||"";
+  $("#s-base").value=v.sbase||""; $("#s-d").value=v.sd||"0"; $("#s-w").value=v.sw||"0"; $("#s-m").value=v.sm||"0"; $("#s-y").value=v.sy||"0";
+  $("#l-data").value=v.ldata||""; $("#m-data").value=v.mdata||""; return true; }catch(e){ return false; } }
+
+/* ---------- Tema ---------- */
+function applyTheme(t){ if(t)document.documentElement.setAttribute("data-theme",t); else document.documentElement.removeAttribute("data-theme"); try{localStorage.setItem("cdd-tema",t||"");}catch(e){} }
+try{ const t=localStorage.getItem("cdd-tema"); if(t) applyTheme(t); }catch(e){}
+$("#theme").addEventListener("click", ()=>{ const cur=document.documentElement.getAttribute("data-theme"); const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches; applyTheme(dark?"light":"dark"); });
+
+/* ---------- Início ---------- */
+const had=loadVals();
+if(!had){ // valores de exemplo para a tela não abrir vazia
+  const now=new Date(); $("#e-ini").value=toLocalInput(new Date(now.getFullYear(),0,1,0,0)); $("#e-fim").value=toLocalInput(now);
+  $("#l-data").value=toDateInput(now); $("#m-data").value=toDateInput(now);
+}
+try{ const ab=localStorage.getItem("cdd-aba"); if(ab&&renderers[ab]) active=ab; }catch(e){}
+selectTab(active);
+// relógio ao vivo: atualiza "entre datas" (se final=agora) e idade/contagem a cada segundo
+setInterval(()=>{ if(active==="idade"&&$("#i-nasc").value) renderIdade(); }, 1000);
+
+window.__calc = { diffParts, totals, monthsBetween, addToDate, moon, signo, chines, businessDays };
+})();
+</script>
+<script src="pwa.js" defer></script>
+</body>
+</html>
